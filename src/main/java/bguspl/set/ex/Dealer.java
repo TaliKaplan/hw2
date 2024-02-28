@@ -370,7 +370,7 @@ public class Dealer implements Runnable {
                 cards.add(card);
         }
 
-        while (env.util.findSets(cards, findASet).isEmpty()) {
+        while (!terminate && env.util.findSets(cards, findASet).isEmpty()) {
             removeAllCardsFromTable();
             Collections.shuffle(deck);
             placeCardsOnTable();
