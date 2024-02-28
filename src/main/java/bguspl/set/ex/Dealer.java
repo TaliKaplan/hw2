@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Vector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import javax.swing.plaf.synth.SynthOptionPaneUI;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,7 +23,7 @@ public class Dealer implements Runnable {
      * The game environment object.
      */
     private final Env env;
-
+    
     /**
      * Game entities.
      */
@@ -45,12 +48,12 @@ public class Dealer implements Runnable {
     /**
      * The time when the dealer needs to reshuffle the deck due to turn timeout.
      */
-    private boolean shuffle;
+    private volatile boolean shuffle;
     
     /**
      * The time for the dealer to wake up to update the timer if nobody woke him up
      */
-    private final int wakeUpTime = 900;
+    private final int wakeUpTime = 500;
     
     /**
      * The size of each set in the game.
@@ -98,6 +101,7 @@ public class Dealer implements Runnable {
     private final int nonNegative = 0;
 
     private final List<Integer> cardsToRemove;
+    public boolean terminated = false; 
     
     public Dealer(Env env, Table table, Player[] players) {
         this.env = env;
@@ -110,6 +114,7 @@ public class Dealer implements Runnable {
         setSize = env.config.featureSize;
         warn = false;
         cardsToRemove = new LinkedList<>();
+
     }
 
     /**
@@ -131,7 +136,8 @@ public class Dealer implements Runnable {
         updateTimerDisplay(true);
         
         while (!terminate) {
-        	shuffle = false;
+        	displayHints();
+            shuffle = false;
         	notifyPlayers();
             timerLoop();
             shuffle = true;
@@ -141,7 +147,8 @@ public class Dealer implements Runnable {
             updateTimerDisplay(true);
         }
         
-        terminate();
+        if(!terminated)
+            terminate();
         announceWinners();
         try {
         	Thread.currentThread().sleep(env.config.endGamePauseMillies);
@@ -169,11 +176,14 @@ public class Dealer implements Runnable {
     public void terminate() {
         // TODO implement
     	terminate = true;
+        terminated = true;
+        shuffle = false;
         
-        for (int i = players.length - 1; i > -1; i--) {
-    		synchronized(players[i]) {
-    			players[i].notify();
-    			players[i].terminate();
+        for (int i = 0; i < playersThreads.size(); i++) {
+    		players[i].terminate();
+            players[i].notifyAi();
+            synchronized(players[i]) {
+                players[i].notify();
     		}
     		try {
     			playersThreads.get(i).join();
@@ -278,14 +288,15 @@ public class Dealer implements Runnable {
      * Check who is/are the winner/s and displays them.
      */
     private void announceWinners() {
-    	int max = 0;
+        int max = 0;
     	LinkedList<Integer> winners = new LinkedList<Integer>();
     	// Find the max score and adds the winners
         for (Player player : players) {
         	if (player.score() >= max) {
-        		if (player.score() > max)
+        		if (player.score() > max){
         			winners.clear();
-        		max = player.score();
+        		    max = player.score();
+                }
         		winners.add(player.id);
         	}
         }
@@ -293,9 +304,8 @@ public class Dealer implements Runnable {
         int[] ids = new int[winners.size()];
         for(int i = 0; i < winners.size(); i++) 
         	ids[i] = winners.get(i);
-        	
-        env.ui.announceWinner(ids);
         
+        env.ui.announceWinner(ids);
     }
     
     // Returns if the deck is being reshuffled
@@ -336,6 +346,7 @@ public class Dealer implements Runnable {
     		
             placeCardsOnTable();
     		updateTimerDisplay(true);
+            displayHints();
     		return;
     	}
     	
@@ -381,5 +392,11 @@ public class Dealer implements Runnable {
                     cards.add(card);
             }
         }
+    }
+
+
+    private void displayHints(){
+        if(env.config.hints)
+            table.hints();
     }
 }
