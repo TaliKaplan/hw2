@@ -169,9 +169,9 @@ public class Table {
     }
     
     // Returns all the cards that a specified player has a token on
-    public int[] getPlayersCards(int id) {
+    public Integer[] getPlayersCards(int id) {
     	
-    	int[] slots = new int[Dealer.setSize];
+    	Integer[] slots = new Integer[Dealer.setSize];
     	for (int i = 0; i < slots.length; i++)
     		slots[i] = -1;
     	
@@ -217,10 +217,10 @@ public class Table {
     
     // Returns all the cards that a specified player has a token on
     public int getAmountOfPlayersCards(int id) {
-    	int[] cards = getPlayersCards(id);
+    	Integer[] cards = getPlayersCards(id);
     	int size = 0;
     	for (int i = 0; i < cards.length; i++)
-    		if (cards[i] != cardNotFound)
+    		if (cards[i] != null && cards[i] != cardNotFound)
     			size++;
 
     	return size;
