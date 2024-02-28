@@ -273,7 +273,7 @@ public class Player implements Runnable {
 		}
 		
 		int amountOfCards = table.getAmountOfPlayersCards(id);
-		// if there are all ready 3 cards belonging to the player(he has 3 tokens down) dont place another 
+		// if there are all ready 3 cards belonging to the player(he has 3 tokens down) dont place another
 		// or even check for legality as its already been checked 
 		if (amountOfCards == Dealer.setSize)
 			return;
