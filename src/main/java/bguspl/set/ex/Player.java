@@ -82,6 +82,8 @@ public class Player implements Runnable {
      * Signifies the first element 
      */
     private boolean won;
+
+    private final long finishSleep = 2000; //player thread sleeps so ai's would be able to terminate first
     
     /**
      * The class constructor.
@@ -113,7 +115,7 @@ public class Player implements Runnable {
         env.logger.info("thread " + Thread.currentThread().getName() + " starting.");
         if (!human) createArtificialIntelligence();
 
-        while (!terminate) {
+        while (!terminate && !dealer.terminated) {
             // TODO implement main player loop
         	synchronized(this) {
 	        	while (dealer.shuffleStatus()) {
@@ -127,7 +129,7 @@ public class Player implements Runnable {
         	}
         	
             synchronized (actions) {
-                if (actions.isEmpty()) { // there is nothing for the player to do
+                if (!terminate && actions.isEmpty()) { // there is nothing for the player to do
                     try {
                         actions.wait(); //if !human - aiThread keeps running and will wake the player
                     } catch (InterruptedException ignored) {}
@@ -139,11 +141,13 @@ public class Player implements Runnable {
         }
 
         if (!human) {
-        	synchronized(aiThread) {
-        		aiThread.notify();
-        	}
-        	try { aiThread.join(); } 
-            catch (InterruptedException error) {}
+            synchronized(aiThread){
+                aiThread.notify();
+
+                try{
+                    aiThread.join();
+                }catch(InterruptedException ignored){}
+            }
         }
         env.logger.info("thread " + Thread.currentThread().getName() + " terminated.");
     }
@@ -160,18 +164,17 @@ public class Player implements Runnable {
                 // TODO implement player key press simulator
             	Random rand = new Random();
             	synchronized(aiThread) {
-	            	while(dealer.shuffleStatus()) {
+	            	while(!dealer.shuffleStatus() && !terminate) {
 	                	try {
 	                		aiThread.wait();
 	                    } catch (InterruptedException error) {}
-	            	}
-	            	
-	            	try {
-	            		aiThread.wait(botTiming);
-	                } catch (InterruptedException error) {}
-            	}
+	            	}	
+	                try {
+	            	    aiThread.wait(botTiming);
+                    } catch (InterruptedException error) {}
+                }
             	keyPressed(rand.nextInt(env.config.tableSize));
-            	
+        
             }
             env.logger.info("thread " + Thread.currentThread().getName() + " terminated.");
         }, "computer-" + id);
@@ -273,7 +276,7 @@ public class Player implements Runnable {
 		}
 		
 		int amountOfCards = table.getAmountOfPlayersCards(id);
-		// if there are all ready 3 cards belonging to the player(he has 3 tokens down) dont place another
+		// if there are all ready 3 cards belonging to the player(he has 3 tokens down) dont place another 
 		// or even check for legality as its already been checked 
 		if (amountOfCards == Dealer.setSize)
 			return;
